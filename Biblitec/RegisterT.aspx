@@ -44,7 +44,7 @@
         }
 
         .form-group input[type="text"], 
-        .form-group asp:TextBox {
+        .form-group asp TextBox {
             width: calc(100% - 24px);
             padding: 12px;
             border: 1px solid #cccccc;
@@ -61,12 +61,12 @@
             justify-content: space-between;
         }
 
-        .buttons-group asp:Button {
+        .buttons-group asp Button {
             flex: 1;
             margin: 5px;
         }
 
-        .buttons-group asp:Button {
+        .buttons-group asp Button {
             background-color: #8a2be2;
             color: #ffffff;
             padding: 15px 20px;
@@ -78,7 +78,7 @@
             transition: background-color 0.3s ease;
         }
 
-        .buttons-group asp:Button:hover {
+        .buttons-group asp Button:hover {
             background-color: #5E17EB;
         }
 
@@ -128,45 +128,124 @@
             align-items: center;
         }
 
-        .search-group asp:TextBox {
+        .search-group asp TextBox {
             flex: 3;
             margin-right: 10px;
         }
 
-        .search-group asp:Button {
+        .search-group asp Button {
             flex: 1;
         }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 80%;
+            }
+
+            .buttons-group asp Button {
+                width: calc(50% - 10px);
+            }
+
+            .form-group input[type="text"], 
+            .form-group asp TextBox {
+                width: calc(100% - 20px);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                width: 100%;
+                padding: 10px;
+            }
+
+            .buttons-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .buttons-group asp Button {
+                width: 100%;
+                margin: 5px 0;
+            }
+
+            .form-group input[type="text"], 
+            .form-group asp TextBox {
+                width: calc(100% - 10px);
+            }
+        }
     </style>
+    <script>
+        function formatDate(input) {
+            let value = input.value.replace(/\D/g, '');
+            let formattedValue = '';
+            if (value.length > 2) {
+                formattedValue = value.substring(0, 2) + '/';
+                if (value.length > 4) {
+                    formattedValue += value.substring(2, 4) + '/';
+                    formattedValue += value.substring(4, 8);
+                } else {
+                    formattedValue += value.substring(2, 4);
+                }
+            } else {
+                formattedValue = value;
+            }
+            input.value = formattedValue;
+        }
+
+        function permitirSomenteLetras(input) {
+            input.value = input.value.replace(/[^a-zA-Z\s]/g, '');
+        }
+
+        function formatarCPF(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.length > 3) value = value.substring(0, 3) + '.' + value.substring(3);
+            if (value.length > 7) value = value.substring(0, 7) + '.' + value.substring(7);
+            if (value.length > 11) value = value.substring(0, 11) + '-' + value.substring(11, 13);
+            input.value = value;
+        }
+
+        function formatarValor(input) {
+            let value = input.value.replace(/\D/g, '');
+            let number = parseFloat(value) / 100;
+            if (!isNaN(number)) {
+                input.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace('R$', '').trim();
+            } else {
+                input.value = '';
+            }
+        }
+    </script>
+
+
 </head>
 <body>
-    <form id="form1" runat="server">
+      <form id="form1" runat="server">
         <div class="container">
             <h2>REGISTROS</h2>
             <asp:Label ID="lblResult" runat="server" EnableViewState="false"></asp:Label>
 
             <div class="form-group">
                 <asp:Label ID="lblName" runat="server" Text="Nome:"></asp:Label>
-                <asp:TextBox ID="txtName" runat="server"></asp:TextBox>
+                <asp:TextBox ID="txtName" runat="server" oninput="permitirSomenteLetras(this)"></asp:TextBox>
             </div>
 
             <div class="form-group">
                 <asp:Label ID="lblCPF" runat="server" Text="CPF:"></asp:Label>
-                <asp:TextBox ID="txtCPF" runat="server"></asp:TextBox>
+                <asp:TextBox ID="txtCPF" runat="server" oninput="formatarCPF(this)"></asp:TextBox>
             </div>
 
             <div class="form-group">
                 <asp:Label ID="lblGenerationDate" runat="server" Text="Data de Geração:"></asp:Label>
-                <asp:TextBox ID="txtGenerationDate" runat="server"></asp:TextBox>
+                <asp:TextBox ID="txtGenerationDate" runat="server" oninput="formatDate(this)"></asp:TextBox>
             </div>
 
             <div class="form-group">
                 <asp:Label ID="lblPaymentDate" runat="server" Text="Data de Pagamento:"></asp:Label>
-                <asp:TextBox ID="txtPaymentDate" runat="server"></asp:TextBox>
+                <asp:TextBox ID="txtPaymentDate" runat="server" oninput="formatDate(this)"></asp:TextBox>
             </div>
 
             <div class="form-group">
                 <asp:Label ID="lblValor" runat="server" Text="Valor:"></asp:Label>
-                <asp:TextBox ID="txtValor" runat="server"></asp:TextBox>
+                <asp:TextBox ID="txtValor" runat="server" oninput="formatarValor(this)"></asp:TextBox>
             </div>
 
             <div class="form-group">
@@ -191,13 +270,13 @@
                     <asp:BoundField DataField="Observacao" HeaderText="Observação" />
                 </Columns>
             </asp:GridView>
-
+           
             <div class="search-group">
-                <asp:Label ID="lblSearchCPF" runat="server" Text="Buscar por CPF:" AssociatedControlID="txtSearchCPF"></asp:Label>
-                <asp:TextBox ID="txtSearchCPF" runat="server"></asp:TextBox>
-                <asp:Button ID="btnSearchCPF" runat="server" Text="Buscar" OnClick="btnSearchCPF_Click" CssClass="btnViewBooks" />
-            </div>
-        </div>
+                    <asp:Label ID="lblSearchCPF" runat="server" Text="Buscar por CPF:" AssociatedControlID="txtSearchCPF"></asp:Label>
+                    <asp:TextBox ID="txtSearchCPF" runat="server" oninput="formatarCPF(this)"></asp:TextBox>
+                    <asp:Button ID="btnSearchCPF" runat="server" Text="Buscar" OnClick="btnSearchCPF_Click" CssClass="btnViewBooks" />
+                </div>
+           </div>
     </form>
 </body>
 </html>

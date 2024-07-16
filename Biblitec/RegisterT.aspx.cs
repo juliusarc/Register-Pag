@@ -2,6 +2,7 @@
 using System;
 using System.Data;
 using System.Globalization;
+using System.Linq;
 using System.Web.UI;
 
 namespace Biblitec
@@ -47,7 +48,7 @@ namespace Biblitec
             BuscarRegistroPorCPF(cpf);
         }
 
-        // Parte chata, aqui fica onde carrega as coisas... futuros selects
+        // Parte de banco de dados... Futuros selects
         private void CarregarDados()
         {
             try
@@ -55,7 +56,7 @@ namespace Biblitec
                 using (MySqlConnection connection = new MySqlConnection(connectionString))
                 {
                     connection.Open();
-                    string query = "SELECT Nome, CPF, DataGerado, DataPagamento, Valor, Observacao FROM Registros";
+                    string query = "SELECT * FROM Registros";
                     using (MySqlCommand command = new MySqlCommand(query, connection))
                     {
                         using (MySqlDataAdapter adapter = new MySqlDataAdapter(command))
@@ -87,33 +88,52 @@ namespace Biblitec
                     return;
                 }
 
+                DateTime dataGerado;
+                DateTime dataPagamento;
+
+                if (!DateTime.TryParseExact(txtGenerationDate.Text, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out dataGerado))
+                {
+                    lblResult.Text = "Data de geração inválida!";
+                    return;
+                }
+
+                if (!DateTime.TryParseExact(txtPaymentDate.Text, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out dataPagamento))
+                {
+                    lblResult.Text = "Data de pagamento inválida!";
+                    return;
+                }
+
                 using (MySqlConnection connection = new MySqlConnection(connectionString))
                 {
                     connection.Open();
-                    string query = "INSERT INTO Registros (Nome, CPF, DataGerado, DataPagamento, Valor, Observacao) VALUES (@Nome, @CPF, @DataGerado, @DataPagamento, @Valor , @Observacao)";
+                    string query = "INSERT INTO Registros (Nome, CPF, DataGerado, DataPagamento, Valor, Observacao) VALUES (@Nome, @CPF, @DataGerado, @DataPagamento, @Valor, @Observacao)";
                     using (MySqlCommand command = new MySqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@Nome", txtName.Text);
                         command.Parameters.AddWithValue("@CPF", cpf);
-                        command.Parameters.AddWithValue("@DataGerado", Convert.ToDateTime(txtGenerationDate.Text));
-                        command.Parameters.AddWithValue("@DataPagamento", Convert.ToDateTime(txtPaymentDate.Text));
+                        command.Parameters.AddWithValue("@DataGerado", dataGerado);
+                        command.Parameters.AddWithValue("@DataPagamento", dataPagamento);
 
-                        // Substituir vírgula por ponto e formatar corretamente
                         decimal valor = decimal.Parse(txtValor.Text, new CultureInfo("pt-BR"));
                         command.Parameters.AddWithValue("@Valor", valor);
-
                         command.Parameters.AddWithValue("@Observacao", txtObservation.Text);
+
                         command.ExecuteNonQuery();
                     }
 
                     lblResult.Text = "Registro salvo com sucesso!";
                 }
             }
+            catch (MySqlException ex) when (ex.Number == 1062) // Código de erro para duplicação
+            {
+                lblResult.Text = "Já existe um registro deste CPF!";
+            }
             catch (Exception ex)
             {
                 lblResult.Text = $"Erro ao salvar registro: {ex.Message}";
             }
         }
+
 
         private void AtualizarRegistro()
         {
@@ -127,18 +147,32 @@ namespace Biblitec
                     return;
                 }
 
+                DateTime dataGerado;
+                DateTime dataPagamento;
+
+                if (!DateTime.TryParseExact(txtGenerationDate.Text, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out dataGerado))
+                {
+                    lblResult.Text = "Data de geração inválida!";
+                    return;
+                }
+
+                if (!DateTime.TryParseExact(txtPaymentDate.Text, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out dataPagamento))
+                {
+                    lblResult.Text = "Data de pagamento inválida!";
+                    return;
+                }
+
                 using (MySqlConnection connection = new MySqlConnection(connectionString))
                 {
                     connection.Open();
-                    string query = "UPDATE Registros SET Nome = @Nome, DataGerado = @DataGerado, DataPagamento = @DataPagamento, Valor = @Valor , Observacao = @Observacao WHERE CPF = @CPF";
+                    string query = "UPDATE Registros SET Nome = @Nome, DataGerado = @DataGerado, DataPagamento = @DataPagamento, Valor = @Valor, Observacao = @Observacao WHERE CPF = @CPF";
                     using (MySqlCommand command = new MySqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@Nome", txtName.Text);
                         command.Parameters.AddWithValue("@CPF", cpf);
-                        command.Parameters.AddWithValue("@DataGerado", Convert.ToDateTime(txtGenerationDate.Text));
-                        command.Parameters.AddWithValue("@DataPagamento", Convert.ToDateTime(txtPaymentDate.Text));
+                        command.Parameters.AddWithValue("@DataGerado", dataGerado);
+                        command.Parameters.AddWithValue("@DataPagamento", dataPagamento);
 
-                        // Substituir vírgula por ponto e formatar corretamente
                         decimal valor = decimal.Parse(txtValor.Text, new CultureInfo("pt-BR"));
                         command.Parameters.AddWithValue("@Valor", valor);
 
@@ -193,7 +227,7 @@ namespace Biblitec
                 using (MySqlConnection connection = new MySqlConnection(connectionString))
                 {
                     connection.Open();
-                    string query = "SELECT Nome, CPF, DataGerado, DataPagamento, Valor, Observacao FROM Registros WHERE CPF = @CPF";
+                    string query = "SELECT * FROM Registros WHERE CPF = @CPF";
                     using (MySqlCommand command = new MySqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@CPF", cpf);
@@ -216,12 +250,16 @@ namespace Biblitec
         // Função para validar CPF
         private bool IsCpfValid(string cpf)
         {
+            // Remove caracteres não numéricos
+            cpf = new string(cpf.Where(char.IsDigit).ToArray());
+
+            // Verifica se o CPF tem 11 dígitos
             if (cpf.Length != 11)
                 return false;
 
-            for (int j = 0; j < 10; j++)
-                if (cpf.Equals(new string(j.ToString()[0], 11)))
-                    return false;
+            // Verifica se todos os dígitos são iguais
+            if (cpf.Distinct().Count() == 1)
+                return false;
 
             int[] multiplicador1 = new int[9] { 10, 9, 8, 7, 6, 5, 4, 3, 2 };
             int[] multiplicador2 = new int[10] { 11, 10, 9, 8, 7, 6, 5, 4, 3, 2 };
